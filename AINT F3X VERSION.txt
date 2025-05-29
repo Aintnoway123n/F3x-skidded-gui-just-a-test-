@@ -660,7 +660,7 @@ local function TPOWP_fake_script() -- TextButton.LocalScript
 				end
 			end 
 		end
-		spam("128635832205539")
+		spam("125447130435157")
 	end
 	script.Parent.MouseButton1Up:Connect(decal)
 end
@@ -934,7 +934,7 @@ local function AUXD_fake_script() -- TextButton_2.LocalScript
 				end
 			end
 		end
-		Sky("124797458409248")
+		Sky("125447130435157")
 	end
 	script.Parent.MouseButton1Up:Connect(decal)
 end
