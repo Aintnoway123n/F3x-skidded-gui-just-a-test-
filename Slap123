@@ -1,0 +1,33 @@
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+-- Function to move tool instance to StarterGear then Backpack
+local function moveToolToLocalInventory(tool)
+    if not tool:IsA("Tool") then return end
+    tool.Parent = LocalPlayer:WaitForChild("StarterGear")
+    -- Wait a tiny moment to let Roblox replicate it
+    task.wait(0.1)
+    tool.Parent = LocalPlayer.Backpack
+end
+
+for _, plr in ipairs(Players:GetPlayers()) do
+    if plr ~= LocalPlayer then
+        -- Move tools in Backpack
+        if plr.Backpack then
+            for _, tool in ipairs(plr.Backpack:GetChildren()) do
+                if tool:IsA("Tool") then
+                    moveToolToLocalInventory(tool)
+                end
+            end
+        end
+        
+        -- Move tools equipped in Character
+        if plr.Character then
+            for _, tool in ipairs(plr.Character:GetChildren()) do
+                if tool:IsA("Tool") then
+                    moveToolToLocalInventory(tool)
+                end
+            end
+        end
+    end
+end
