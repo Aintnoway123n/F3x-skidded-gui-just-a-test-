@@ -1,0 +1,128 @@
+local Players = game:GetService("Players")
+local Debris = game:GetService("Debris")
+local LocalPlayer = Players.LocalPlayer
+
+-- Create tool
+local Tool = Instance.new("Tool")
+Tool.Name = "DirectionalFlingBlade"
+Tool.RequiresHandle = false
+Tool.Parent = LocalPlayer:WaitForChild("Backpack")
+
+-- Animation (R6 slash)
+local Animation = Instance.new("Animation")
+Animation.AnimationId = "rbxassetid://243827693"
+
+-- Function to get glove/slap tool and its RemoteEvent
+local function getValidToolAndRemote()
+	local containers = {LocalPlayer.Backpack, LocalPlayer.Character}
+	for _, container in ipairs(containers) do
+		for _, toolName in ipairs({"Slap", "Glove"}) do
+			local tool = container and container:FindFirstChild(toolName)
+			if tool and tool:IsA("Tool") and tool:FindFirstChild("Event") then
+				return tool, tool.Event
+			end
+		end
+	end
+end
+
+-- Target detection: must be in front and close
+local function getTargetIfInFrontAndTouching()
+	local char = LocalPlayer.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if not root then return nil end
+
+	local forward = root.CFrame.LookVector
+
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+			local targetHRP = p.Character.HumanoidRootPart
+			local offset = (targetHRP.Position - root.Position)
+			local distance = offset.Magnitude
+
+			if distance <= 4 then
+				local dot = forward:Dot(offset.Unit)
+				if dot >= 0.5 then
+					return p
+				end
+			end
+		end
+	end
+end
+
+-- Red impact burst
+local function emitRedBurst(hrp)
+	local p = Instance.new("ParticleEmitter")
+	p.Texture = "rbxassetid://48340630"
+	p.Color = ColorSequence.new(Color3.fromRGB(255, 0, 0))
+	p.LightEmission = 1
+	p.Size = NumberSequence.new(1)
+	p.Rate = 0
+	p.Lifetime = NumberRange.new(0.4)
+	p.Speed = NumberRange.new(20)
+	p.VelocitySpread = 360
+	p:Emit(25)
+	p.Parent = hrp
+	Debris:AddItem(p, 1)
+end
+
+-- Fling using BodyVelocity
+local function flingTarget(char)
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	if hrp then
+		local bv = Instance.new("BodyVelocity")
+		bv.Velocity = Vector3.new(0, 100, 150)
+		bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+		bv.P = 1250
+		bv.Parent = hrp
+		Debris:AddItem(bv, 0.3)
+	end
+end
+
+-- Floor crack visual
+local function createFloorCrackEffect(position)
+	local crack = Instance.new("Part")
+	crack.Size = Vector3.new(8, 0.2, 8)
+	crack.Anchored = true
+	crack.CanCollide = false
+	crack.Position = Vector3.new(position.X, position.Y - 3, position.Z)
+	crack.Material = Enum.Material.CrackedLava
+	crack.Color = Color3.fromRGB(200, 0, 0)
+	crack.Transparency = 0.4
+	crack.Name = "PunchCrack"
+	crack.Parent = workspace
+
+	local decal = Instance.new("Decal")
+	decal.Texture = "rbxassetid://131759365" -- optional: replace with another crack texture
+	decal.Face = Enum.NormalId.Top
+	decal.Parent = crack
+
+	Debris:AddItem(crack, 2.5)
+end
+
+-- On Tool Activation
+Tool.Activated:Connect(function()
+	local char = LocalPlayer.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if not hum then return end
+
+	local anim = hum:LoadAnimation(Animation)
+	anim:Play()
+
+	task.delay(0.2, function()
+		local target = getTargetIfInFrontAndTouching()
+		local _, remote = getValidToolAndRemote()
+
+		if target and target.Character and remote then
+			local hrp = target.Character:FindFirstChild("HumanoidRootPart")
+			if hrp then
+				local hitPos = hrp.Position
+				pcall(function()
+					remote:FireServer("slash", target.Character, hitPos)
+				end)
+				emitRedBurst(hrp)
+				flingTarget(target.Character)
+				createFloorCrackEffect(hitPos)
+			end
+		end
+	end)
+end)
