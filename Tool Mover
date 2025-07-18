@@ -1,1 +1,76 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 
+local plr = Players.LocalPlayer
+local char = plr.Character or plr.CharacterAdded:Wait()
+local hum = char:WaitForChild("Humanoid")
+local hrp = char:WaitForChild("HumanoidRootPart")
+local backpack = plr:WaitForChild("Backpack")
+
+local orbitOn = false
+local equippedTool = nil
+local angle = 0
+local lastGripUpdate = 0
+
+-- UI
+local gui = Instance.new("ScreenGui", game.CoreGui)
+gui.Name = "Orbit_ToggleUI"
+
+local toggleBtn = Instance.new("TextButton", gui)
+toggleBtn.Size = UDim2.new(0, 120, 0, 40)
+toggleBtn.Position = UDim2.new(0, 20, 0.6, 0)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+toggleBtn.Text = "Orbit: OFF"
+toggleBtn.TextColor3 = Color3.new(1, 1, 1)
+toggleBtn.Font = Enum.Font.GothamBold
+toggleBtn.TextScaled = true
+
+-- Equip tool
+local function equipToolIfAvailable()
+	for _, tool in ipairs(backpack:GetChildren()) do
+		if tool:IsA("Tool") then
+			hum:EquipTool(tool)
+			equippedTool = tool
+			break
+		end
+	end
+end
+
+-- Orbit logic with re-equip to replicate grip
+RunService.RenderStepped:Connect(function(dt)
+	if orbitOn and equippedTool and equippedTool:IsDescendantOf(char) then
+		angle += dt * 2
+
+		-- 🔥 FIXED ORBIT POSITIONS (360 full circle around torso, always facing center)
+		local radius = 3
+		local orbitX = math.cos(angle) * radius
+		local orbitY = 1.5
+		local orbitZ = math.sin(angle) * radius
+		local offset = Vector3.new(orbitX, orbitY, orbitZ)
+
+		local worldCFrame = CFrame.new(hrp.Position + offset, hrp.Position + Vector3.new(0, orbitY, 0))
+		equippedTool.Grip = hrp.CFrame:toObjectSpace(worldCFrame)
+
+		-- Re-equip every 0.1s to replicate grip on server
+		lastGripUpdate += dt
+		if lastGripUpdate >= 0.1 then
+			lastGripUpdate = 0
+			local savedGrip = equippedTool.Grip
+			hum:UnequipTools()
+			task.wait()
+			hum:EquipTool(equippedTool)
+			equippedTool.Grip = savedGrip
+		end
+	end
+end)
+
+-- Orbit Toggle
+toggleBtn.MouseButton1Click:Connect(function()
+	orbitOn = not orbitOn
+	toggleBtn.Text = "Orbit: " .. (orbitOn and "ON" or "OFF")
+	toggleBtn.BackgroundColor3 = orbitOn and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(255, 0, 0)
+
+	if orbitOn then
+		equipToolIfAvailable()
+	end
+end)
