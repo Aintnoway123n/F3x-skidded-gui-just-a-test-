@@ -1,0 +1,141 @@
+local Players = game:GetService("Players")
+local lplr = Players.LocalPlayer
+local StarterGui = game:GetService("StarterGui")
+local SoundService = game:GetService("SoundService")
+
+-- GUI Setup
+local gui = Instance.new("ScreenGui")
+gui.Name = "Aint_MobileUI"
+gui.IgnoreGuiInset = true
+gui.ResetOnSpawn = false
+pcall(function() gui.Parent = game.CoreGui end)
+
+-- Toggle Button [+/-]
+local toggleBtn = Instance.new("TextButton", gui)
+toggleBtn.Size = UDim2.new(0, 40, 0, 40)
+toggleBtn.Position = UDim2.new(0, 10, 0.5, -20)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+toggleBtn.Text = "-"
+toggleBtn.TextColor3 = Color3.new(1, 1, 1)
+toggleBtn.TextScaled = true
+toggleBtn.Font = Enum.Font.GothamBold
+toggleBtn.ZIndex = 999
+
+-- Main Draggable Frame
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 260, 0, 330)
+frame.Position = UDim2.new(0.5, -130, 0.5, -165)
+frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+frame.BorderSizePixel = 2
+frame.BorderColor3 = Color3.fromRGB(255, 0, 0)
+frame.Active = true
+frame.Draggable = true
+
+-- Title
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1, 0, 0, 35)
+title.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+title.Text = "🔥 Aintnoway123n TS GUI"
+title.TextColor3 = Color3.new(1, 1, 1)
+title.TextScaled = true
+title.Font = Enum.Font.GothamBlack
+
+-- Scrollable Area
+local scroll = Instance.new("ScrollingFrame", frame)
+scroll.Position = UDim2.new(0, 0, 0, 35)
+scroll.Size = UDim2.new(1, 0, 1, -75)
+scroll.CanvasSize = UDim2.new(0, 0, 0, 700)  -- increased size for more buttons
+scroll.ScrollBarThickness = 6
+scroll.BackgroundTransparency = 1
+
+local layout = Instance.new("UIListLayout", scroll)
+layout.Padding = UDim.new(0, 5)
+layout.SortOrder = Enum.SortOrder.LayoutOrder
+
+-- Sound Effect
+local function playSound(soundId)
+	local sound = Instance.new("Sound")
+	sound.SoundId = "rbxassetid://" .. soundId
+	sound.Volume = 1
+	sound.Parent = SoundService
+	sound:Play()
+	sound.Ended:Connect(function()
+		sound:Destroy()
+	end)
+end
+
+-- Toggle visibility
+toggleBtn.MouseButton1Click:Connect(function()
+	playSound("2865227271")
+	frame.Visible = not frame.Visible
+	toggleBtn.Text = frame.Visible and "-" or "+"
+end)
+
+-- Button Creator
+local function createButton(txt, color, url)
+	local btn = Instance.new("TextButton", scroll)
+	btn.Size = UDim2.new(1, -20, 0, 50)
+	btn.BackgroundColor3 = color
+	btn.TextColor3 = Color3.new(1, 1, 1)
+	btn.Text = txt
+	btn.TextScaled = true
+	btn.Font = Enum.Font.GothamBold
+	btn.LayoutOrder = 0
+
+	btn.MouseButton1Click:Connect(function()
+		playSound("2865227271")
+		local success, result = pcall(function()
+			return loadstring(game:HttpGet(url))()
+		end)
+		StarterGui:SetCore("SendNotification", {
+			Title = txt,
+			Text = success and "✅ Loaded successfully" or "❌ Failed to load!",
+			Duration = 4
+		})
+	end)
+end
+
+-- Existing Buttons
+createButton("☠️ InstantKill (Needs Slap)", Color3.fromRGB(0, 200, 0),
+"https://raw.githubusercontent.com/Aintnoway123n/F3x-skidded-gui-just-a-test-/refs/heads/main/Shit%20with%20my%20brother%20skid%20fuc-")
+
+createButton("🌀 Fe Punch (Needs Slap)", Color3.fromRGB(0, 120, 255),
+"https://raw.githubusercontent.com/Aintnoway123n/F3x-skidded-gui-just-a-test-/refs/heads/main/Troll%20is%20a%20pinning%20tower%202")
+
+createButton("👋 Slap Stealer", Color3.fromRGB(255, 60, 60),
+"https://raw.githubusercontent.com/Aintnoway123n/F3x-skidded-gui-just-a-test-/refs/heads/main/Slap123")
+
+createButton("🔥 Fire Hitbox (Troll)", Color3.fromRGB(255, 140, 0),
+"https://rawscripts.net/raw/Universal-Script-Fire-Interest-Hitbox-33772")
+
+createButton("🛡️ Anti Slap + Fling", Color3.fromRGB(140, 0, 255),
+"https://raw.githubusercontent.com/Aintnoway123n/F3x-skidded-gui-just-a-test-/refs/heads/main/Anti%20shit%20for%20Annoying%20SLAPpers%20ts%20shit%20is%20skid")
+
+createButton("🛠️ Tool Mover", Color3.fromRGB(255, 255, 0),
+"https://raw.githubusercontent.com/Aintnoway123n/F3x-skidded-gui-just-a-test-/main/Tool%20Mover")
+
+createButton("🎮 TS GamePaused", Color3.fromRGB(0, 255, 255),
+"https://raw.githubusercontent.com/Aintnoway123n/F3x-skidded-gui-just-a-test-/main/Game%20Paused")
+
+createButton("🛡️ Protect Button", Color3.fromRGB(200, 100, 255),
+"https://raw.githubusercontent.com/Aintnoway123n/F3x-skidded-gui-just-a-test-/main/Protect%20Button%20from%20trollers")
+
+-- ✅ NEW Crash Button (needs tool, only works if their mobile is trash)
+createButton("💥 Crash (need tool)", Color3.fromRGB(255, 100, 0),
+"https://raw.githubusercontent.com/Aintnoway123n/F3x-skidded-gui-just-a-test-/main/Crash%20(need%20tool)%20(only%20works%20if%20their%20mobile%20is%20trash)")
+
+-- Exit Button
+local exitBtn = Instance.new("TextButton", frame)
+exitBtn.Size = UDim2.new(1, 0, 0, 35)
+exitBtn.Position = UDim2.new(0, 0, 1, -35)
+exitBtn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+exitBtn.Text = "❌ Close UI"
+exitBtn.TextColor3 = Color3.new(1, 1, 1)
+exitBtn.Font = Enum.Font.GothamBold
+exitBtn.TextScaled = true
+exitBtn.ZIndex = 10
+
+exitBtn.MouseButton1Click:Connect(function()
+	playSound("2865227271")
+	gui:Destroy()
+end)
