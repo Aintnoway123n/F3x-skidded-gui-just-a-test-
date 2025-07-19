@@ -1,0 +1,92 @@
+-- SETTINGS
+local HITBOX_SIZE = 7
+local ATTACK_REPEAT = 100000
+local SLAP_VECTOR = Vector3.new(-4.25, 0, -2.6)
+local REMOTE_NAME = "Event"
+local TOOL_NAME = "Glove"
+
+-- SERVICES
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+
+-- UI
+local ScreenGui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
+ScreenGui.Name = "HitboxToggleUI"
+
+local Button = Instance.new("TextButton")
+Button.Size = UDim2.new(0, 150, 0, 40)
+Button.Position = UDim2.new(0, 10, 0.5, -20)
+Button.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+Button.Text = "Hitbox: OFF"
+Button.TextColor3 = Color3.new(1, 1, 1)
+Button.Font = Enum.Font.GothamBlack
+Button.TextScaled = true
+Button.Draggable = true
+Button.Active = true
+Button.Parent = ScreenGui
+
+-- UTILS
+local function getToolAndRemote()
+    local tool = LocalPlayer.Backpack:FindFirstChild(TOOL_NAME) or LocalPlayer.Character:FindFirstChild(TOOL_NAME)
+    if tool then
+        local power = tool:FindFirstChild("Power")
+        if power and power:IsA("NumberValue") then
+            power.Value = math.huge
+        end
+        local remote = tool:FindFirstChild(REMOTE_NAME)
+        return tool, remote
+    end
+end
+
+local function getTargets()
+    local targets = {}
+    local myHRP = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not myHRP then return targets end
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+            local dist = (plr.Character.HumanoidRootPart.Position - myHRP.Position).Magnitude
+            if dist <= HITBOX_SIZE then
+                table.insert(targets, plr)
+            end
+        end
+    end
+    return targets
+end
+
+-- MAIN
+local active = false
+local connection
+
+Button.MouseButton1Click:Connect(function()
+    active = not active
+    Button.Text = "Hitbox: " .. (active and "ON" or "OFF")
+    Button.BackgroundColor3 = active and Color3.fromRGB(80, 255, 100) or Color3.fromRGB(255, 80, 80)
+
+    if active then
+        connection = RunService.Heartbeat:Connect(function()
+            local tool, remote = getToolAndRemote()
+            if remote then
+                local totalFires = 0
+                local targets = getTargets()
+                for _, plr in ipairs(targets) do
+                    for i = 1, ATTACK_REPEAT do
+                        remote:FireServer("slash", plr.Character, SLAP_VECTOR)
+                        totalFires += 1
+                        if totalFires >= ATTACK_REPEAT then
+                            -- Auto-delete Remote + Power after spamming
+                            task.delay(0.5, function()
+                                if remote and remote.Parent then pcall(function() remote:Destroy() end) end
+                                local power = tool and tool:FindFirstChild("Power")
+                                if power then pcall(function() power:Destroy() end) end
+                            end)
+                            return
+                        end
+                    end
+                end
+            end
+        end)
+    elseif connection then
+        connection:Disconnect()
+    end
+end)
