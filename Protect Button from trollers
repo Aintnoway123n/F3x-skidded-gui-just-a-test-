@@ -1,0 +1,38 @@
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+-- 🔍 Detect "Gudock" part
+local gudock = workspace:WaitForChild("Gudock")
+
+-- 🔍 Find the equipped Glove (Tool) in Character or Backpack
+local function getGloveEvent()
+	for _, location in {LocalPlayer.Backpack, LocalPlayer.Character} do
+		if location then
+			for _, tool in ipairs(location:GetChildren()) do
+				if tool:IsA("Tool") and tool.Name == "Glove" then
+					local remote = tool:FindFirstChild("Event")
+					if remote and remote:IsA("RemoteEvent") then
+						return remote
+					end
+				end
+			end
+		end
+	end
+	return nil
+end
+
+-- ☠️ Touch = Kill
+gudock.Touched:Connect(function(hit)
+	local char = hit:FindFirstAncestorOfClass("Model")
+	local hum = char and char:FindFirstChild("Humanoid")
+	local hrp = char and char:FindFirstChild("HumanoidRootPart")
+	local plr = char and Players:GetPlayerFromCharacter(char)
+	local remote = getGloveEvent()
+
+	if remote and hum and hrp and plr and plr ~= LocalPlayer then
+		print("🔥 Slapping: " .. plr.Name)
+		pcall(function()
+			remote:FireServer("slash", char, hrp.Position)
+		end)
+	end
+end)
