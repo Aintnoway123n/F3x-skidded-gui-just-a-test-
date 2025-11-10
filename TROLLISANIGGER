@@ -1,0 +1,242 @@
+--// SETTINGS
+local TOOL_NAME = "Glove"
+local REMOTE_NAME = "Event"
+local FLOAT_SPEED = Vector3.new(0, -2.9999, 0)
+local INTERVAL = 0.1
+ 
+--// SERVICES
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local StarterGui = game:GetService("StarterGui")
+ 
+--// STATE
+local floatTargets = {}
+local freezeAll = false
+ 
+--// TOOL + REMOTE FETCHER
+local function getToolRemote()
+    local tool = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild(TOOL_NAME)
+        or LocalPlayer.Backpack:FindFirstChild(TOOL_NAME)
+    if tool then
+        local power = tool:FindFirstChild("Power")
+        local cooldown = tool:FindFirstChild("Cooldown")
+        if power then power.Value = 0 end
+        if cooldown then cooldown.Value = 0 end
+        return tool, tool:FindFirstChild(REMOTE_NAME)
+    end
+end
+ 
+--// APPLY FLOAT TO A PLAYER
+local function floatPlayer(plr)
+    task.spawn(function()
+        while floatTargets[plr.UserId] do
+            local _, remote = getToolRemote()
+            if remote and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                remote:FireServer("slash", plr.Character, FLOAT_SPEED)
+            end
+            task.wait(INTERVAL)
+        end
+    end)
+end
+ 
+--// TRACK PLAYER RESPAWN
+local function trackFloat(plr)
+    floatTargets[plr.UserId] = true
+    floatPlayer(plr)
+    plr.CharacterAdded:Connect(function()
+        if floatTargets[plr.UserId] then
+            task.wait(0.5)
+            floatPlayer(plr)
+        end
+    end)
+end
+ 
+--// STOP FLOAT
+local function stopFloat(plr)
+    floatTargets[plr.UserId] = nil
+end
+ 
+--// CREATE UI
+local screenGui = Instance.new("ScreenGui", LocalPlayer.PlayerGui)
+screenGui.ResetOnSpawn = false
+ 
+local mainFrame = Instance.new("Frame", screenGui)
+mainFrame.Size = UDim2.new(0, 250, 0, 300)
+mainFrame.Position = UDim2.new(0.05, 0, 0.3, 0)
+mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+mainFrame.Active = true
+mainFrame.Draggable = true
+ 
+local title = Instance.new("TextLabel", mainFrame)
+title.Size = UDim2.new(1, 0, 0, 30)
+title.Text = "Freeze Control"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.BackgroundTransparency = 1
+title.Font = Enum.Font.SourceSansBold
+title.TextSize = 20
+ 
+local freezeAllBtn = Instance.new("TextButton", mainFrame)
+freezeAllBtn.Size = UDim2.new(1, 0, 0, 30)
+freezeAllBtn.Position = UDim2.new(0, 0, 0, 35)
+freezeAllBtn.Text = "Freeze All: OFF"
+freezeAllBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+freezeAllBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+freezeAllBtn.Font = Enum.Font.SourceSansBold
+freezeAllBtn.TextSize = 18
+ 
+freezeAllBtn.MouseButton1Click:Connect(function()
+    freezeAll = not freezeAll
+    freezeAllBtn.Text = "Freeze All: " .. (freezeAll and "ON" or "OFF")
+    if freezeAll then
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer then
+                trackFloat(p)
+            end
+        end
+    else
+        floatTargets = {}
+    end
+end)
+ 
+--// PLAYER LIST
+local listFrame = Instance.new("ScrollingFrame", mainFrame)
+listFrame.Size = UDim2.new(1, 0, 1, -70)
+listFrame.Position = UDim2.new(0, 0, 0, 70)
+listFrame.BackgroundTransparency = 1
+listFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+listFrame.ScrollBarThickness = 4
+ 
+local function refreshList()
+    listFrame:ClearAllChildren()
+    local y = 0
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer then
+            local btn = Instance.new("TextButton", listFrame)
+            btn.Size = UDim2.new(1, 0, 0, 30)
+            btn.Position = UDim2.new(0, 0, 0, y)
+            btn.Text = "Freeze: " .. plr.DisplayName
+            btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            btn.Font = Enum.Font.SourceSans
+            btn.TextSize = 18
+            btn.MouseButton1Click:Connect(function()
+                if floatTargets[plr.UserId] then
+                    stopFloat(plr)
+                    btn.Text = "Freeze: " .. plr.DisplayName
+                else
+                    trackFloat(plr)
+                    btn.Text = "Unfreeze: " .. plr.DisplayName
+                end
+            end)
+            y = y + 35
+        end
+    end
+    listFrame.CanvasSize = UDim2.new(0, 0, 0, y)
+end
+ 
+Players.PlayerAdded:Connect(refreshList)
+Players.PlayerRemoving:Connect(refreshList)
+refreshList()
+ 
+--// Services
+local Players = game:GetService("Players")
+local CoreGui = game:GetService("CoreGui")
+local StarterGui = game:GetService("StarterGui")
+local Lighting = game:GetService("Lighting")
+local RunService = game:GetService("RunService")
+ 
+local lp = Players.LocalPlayer
+local cam = workspace.CurrentCamera
+ 
+--// Destroy Camera.Blur
+local function destroyCamBlur()
+	for _, v in ipairs(cam:GetChildren()) do
+		if v:IsA("BlurEffect") then
+			v:Destroy()
+		end
+	end
+end
+ 
+-- Remove camera blur immediately
+destroyCamBlur()
+ 
+-- Monitor for new blur
+cam.ChildAdded:Connect(function(child)
+	if child:IsA("BlurEffect") then
+		task.wait()
+		child:Destroy()
+	end
+end)
+ 
+--// Remove Lighting blur
+local function destroyLightingBlur()
+	for _, v in ipairs(Lighting:GetChildren()) do
+		if v:IsA("BlurEffect") then
+			v:Destroy()
+		end
+	end
+end
+ 
+destroyLightingBlur()
+ 
+Lighting.ChildAdded:Connect(function(child)
+	if child:IsA("BlurEffect") then
+		task.wait()
+		child:Destroy()
+	end
+end)
+ 
+--// Destroy NetworkPause and other pause UIs
+local function cleanGui(gui)
+	local name = gui.Name:lower()
+	if gui:IsA("ScreenGui") or gui:IsA("Frame") then
+		if name:find("pause") or name:find("network") or name:find("too") then
+			gui:Destroy()
+		end
+	end
+end
+ 
+-- Remove existing pause UI
+for _, v in ipairs(CoreGui:GetDescendants()) do
+	pcall(cleanGui, v)
+end
+ 
+-- Monitor added GUI
+CoreGui.DescendantAdded:Connect(function(child)
+	task.wait()
+	pcall(cleanGui, child)
+end)
+ 
+-- Also destroy CoreScripts/NetworkPause directly if present
+RunService.RenderStepped:Connect(function()
+	local pauseUi = CoreGui:FindFirstChild("RobloxGui")
+	if pauseUi then
+		local networkGui = pauseUi:FindFirstChild("CoreScripts/NetworkPause")
+		if networkGui then
+			networkGui:Destroy()
+		end
+	end
+end)
+ 
+--// Restore UI and controls
+pcall(function()
+	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, true)
+	lp.DevComputerMovementMode = Enum.DevComputerMovementMode.KeyboardMouse
+	lp.DevTouchMovementMode = Enum.DevTouchMovementMode.Thumbstick
+	lp.CameraMode = Enum.CameraMode.Classic
+end)
+ 
+--// Restore joystick loop
+task.spawn(function()
+	while true do
+		local touchGui = CoreGui:FindFirstChild("TouchGui")
+		if touchGui then
+			touchGui.Enabled = true
+			if touchGui:FindFirstChild("TouchControlFrame") then
+				touchGui.TouchControlFrame.Visible = true
+			end
+		end
+		task.wait(1)
+	end
+end)
