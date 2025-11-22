@@ -1,0 +1,116 @@
+--// SETTINGS
+local REMOTE_NAME = "Event"
+local TOOL_NAME = "Glove"
+local SLAP_INTERVAL = 0.1
+
+--// SERVICES
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TextChatService = game:GetService("TextChatService")
+local LocalPlayer = Players.LocalPlayer
+
+--// STATE
+local activeFreezes = {}
+local activeBrings = {}
+
+--// TOOL + REMOTE FETCHER
+local function getToolRemote()
+	local tool = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild(TOOL_NAME)
+	           or LocalPlayer.Backpack:FindFirstChild(TOOL_NAME)
+	if tool then
+		local power = tool:FindFirstChild("Power")
+		local cooldown = tool:FindFirstChild("Cooldown")
+		if power then power.Value = 0 end
+		if cooldown then cooldown.Value = 0 end
+		return tool, tool:FindFirstChild(REMOTE_NAME)
+	end
+end
+
+--// FIND BY NAME OR DISPLAY
+local function findMatchingPlayer(query)
+	query = query:lower()
+	for _, plr in ipairs(Players:GetPlayers()) do
+		if plr ~= LocalPlayer then
+			if plr.Name:lower():find(query) or plr.DisplayName:lower():find(query) then
+				return plr
+			end
+		end
+	end
+end
+
+--// FREEZE SLAP LOOP
+local function startSlapLoop(nameQuery)
+	if activeFreezes[nameQuery] then return end
+	activeFreezes[nameQuery] = true
+
+	task.spawn(function()
+		while activeFreezes[nameQuery] do
+			local target = findMatchingPlayer(nameQuery)
+			if target and target.Character then
+				local _, remote = getToolRemote()
+				if remote then
+					remote:FireServer("slash", target.Character, Vector3.zero)
+				end
+			end
+			task.wait(SLAP_INTERVAL)
+		end
+	end)
+end
+
+local function stopSlapLoop(nameQuery)
+	activeFreezes[nameQuery] = nil
+end
+
+--// BRING LOOP
+local function startBringLoop(nameQuery)
+	if activeBrings[nameQuery] then return end
+	activeBrings[nameQuery] = true
+
+	task.spawn(function()
+		while activeBrings[nameQuery] do
+			local target = findMatchingPlayer(nameQuery)
+			local _, remote = getToolRemote()
+			local char = LocalPlayer.Character
+			if target and target.Character and remote and char then
+				local hrp1 = char:FindFirstChild("HumanoidRootPart")
+				local hrp2 = target.Character:FindFirstChild("HumanoidRootPart")
+				if hrp1 and hrp2 then
+					local dist = (hrp1.Position - hrp2.Position).Magnitude
+					
+					-- Stop if already touched
+					if dist < 3 then
+						activeBrings[nameQuery] = nil
+						break
+					end
+
+					local pullDirection = (hrp1.Position - hrp2.Position).Unit
+					local velocity = pullDirection * 6
+					remote:FireServer("slash", target.Character, velocity)
+				end
+			end
+			task.wait(0.2)
+		end
+	end)
+end
+
+local function stopBringLoop(nameQuery)
+	activeBrings[nameQuery] = nil
+end
+
+--// CHAT HANDLER
+TextChatService.OnIncomingMessage = function(message)
+	if message.TextSource and message.TextSource.UserId == LocalPlayer.UserId then
+		local msg = message.Text:lower()
+		local args = msg:split(" ")
+
+		if args[1] == "/freeze" and args[2] then
+			startSlapLoop(args[2])
+		elseif args[1] == "/unfreeze" and args[2] then
+			stopSlapLoop(args[2])
+		elseif args[1] == "/bring" and args[2] then
+			startBringLoop(args[2])
+		elseif args[1] == "/unbring" and args[2] then
+			stopBringLoop(args[2])
+		end
+	end
+end
